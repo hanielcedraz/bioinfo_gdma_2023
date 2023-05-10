@@ -3,7 +3,7 @@
 
 # Introduction to bioinformatics
 
-Open the file <a href="https://github.com/hanielcedraz/RNA-Seq_Course/blob/main/rnaSeqAnalysis.ipynb" target="_blank">rnaSeqAnalysis.ipynb</a> and click on "Open In Colab" button to follow the tutorial in Google Colab.
+Open the file <a href="https://github.com/hanielcedraz/bioinfo_gdma_2023/blob/main/rnaSeqAnalysis.ipynb" target="_blank">rnaSeqAnalysis.ipynb</a> and click on "Open In Colab" button to follow the tutorial in Google Colab.
 
 
 
@@ -16,7 +16,7 @@ https://github.com/hanielcedraz/RNA-Seq_Course/blob/main/rnaSeqAnalysis.ipynb">r
 
 
 ## Downloading fastq files
-Download the fastq files in <a href="https://github.com/hanielcedraz/RNA-Seq_Course/tree/main/00-Fastq" target="_blank">00-Fastq</a> 
+Download the fastq files in <a href="https://github.com/hanielcedraz/bioinfo_gdma_2023/tree/main/00-Fastq" target="_blank">00-Fastq</a> 
 
 
 ## Loading conda env
@@ -43,7 +43,7 @@ conda activate base
 conda update -n base -c defaults conda
 ```
 
-#### Download the yaml file that contains the conda env: <a href="https://raw.githubusercontent.com/hanielcedraz/RNA-Seq_Course/main/curso_RNA-Seq.yaml" target="_blank">curso_RNA-Seq.yaml</a>  
+#### Download the yaml file that contains the conda env: <a href="https://raw.githubusercontent.com/hanielcedraz/bioinfo_gdma_2023/main/curso_RNA-Seq.yaml" target="_blank">curso_RNA-Seq.yaml</a>  
 
 #### Create curso_RNA-Seq env from yaml
 ```
