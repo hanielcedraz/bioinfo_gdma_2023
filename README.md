@@ -51,3 +51,9 @@ conda env create -f curso_RNA-Seq.yaml
 
 ```
 
+#### Activating the new environment
+```
+conda activate curso_RNA-Seq
+
+```
+
