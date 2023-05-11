@@ -3,8 +3,9 @@
 
 # Introduction to bioinformatics
 
+<!---
 Open the file <a href="https://github.com/hanielcedraz/bioinfo_gdma_2023/blob/main/rnaSeqAnalysis.ipynb" target="_blank">rnaSeqAnalysis.ipynb</a> and click on "Open In Colab" button to follow the tutorial in Google Colab.
-
+-->
 
 
 <!---
