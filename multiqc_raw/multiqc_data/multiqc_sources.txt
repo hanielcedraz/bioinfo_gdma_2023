@@ -1,3 +1,3 @@
 Module	Section	Sample Name	Source
-FastQC	all_sections	8285-E5_S27_L008_R1_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_raw/8285-E5_S27_L008_R1_001_fastqc.zip
-FastQC	all_sections	8285-E5_S27_L008_R2_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_raw/8285-E5_S27_L008_R2_001_fastqc.zip
+FastQC	all_sections	T16A_ACAGTG_L001_R1_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_raw/T16A_ACAGTG_L001_R1_001_fastqc.zip
+FastQC	all_sections	T16A_ACAGTG_L001_R2_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_raw/T16A_ACAGTG_L001_R2_001_fastqc.zip
