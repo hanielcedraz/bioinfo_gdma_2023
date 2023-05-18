@@ -1,0 +1,8 @@
+Sample_ID	Animal_ID	Tissue	Treatment
+T16A	T16A	osso	afetado
+T17N	T17N	osso	controle
+T42N	T42N	osso	controle
+T44N	T44N	osso	controle
+T47A	T47A	osso	afetado
+T49A	T49A	osso	afetado
+
