@@ -1,5 +1,0 @@
-Module	Section	Sample Name	Source
-FastQC	all_sections	T16A_ACAGTG_L001_PE2	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_cleaned/T16A_ACAGTG_L001_PE2_fastqc.zip
-FastQC	all_sections	T17N_CAGATC_L001_PE2	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_cleaned/T17N_CAGATC_L001_PE2_fastqc.zip
-FastQC	all_sections	T16A_ACAGTG_L001_PE1	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_cleaned/T16A_ACAGTG_L001_PE1_fastqc.zip
-FastQC	all_sections	T17N_CAGATC_L001_PE1	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_cleaned/T17N_CAGATC_L001_PE1_fastqc.zip

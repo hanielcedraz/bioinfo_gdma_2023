@@ -1,0 +1,939 @@
+---
+title: "Curso Bioinformática na análise de transcriptomas: do controle de qualidade dos dados à ontologia gênica"
+author: "Adriana Ibelli"
+date: "15 a 19/05/2023"
+output: html_document
+---
+
+### Instalar ou abrir os pacotes utilizados
+
+```{r, echo=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("edgeR", "limma", "statmod", "Glimma", "biomaRt", "gplots", "ggplot2", "AnnotationDbi", "readxl", "yarrr", "fs", "RNAseqQC", "DESeq2", "NOISeq", "ensembldb", "GenomicFeatures", "rtracklayer", "AnnotationHub", "RColorBrewer"))
+
+pacotes <- c("rmarkdown", "knitr", "data.table", "tidyverse", "janitor", "DescTools",  "grid",
+             "ggplot2", "gtable", "gridExtra", "plotly", "ggrepel", "PerformanceAnalytics", 
+             "reshape2", "FSA", "ggpubr", "rstatix", "viridis", "edgeR", "limma", "statmod",
+             "Glimma", "biomaRt", "gplots", "ggplot2", "AnnotationDbi", "readxl", "yarrr", "fs", "RNAseqQC",
+             "DESeq2", "NOISeq", "ensembldb", "GenomicFeatures", "rtracklayer", "AnnotationHub", "RColorBrewer")
+
+if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
+  instalador <- pacotes[!pacotes %in% installed.packages()]
+  for(i in 1:length(instalador)) {
+    install.packages(instalador, dependencies = T)
+    break()}
+  sapply(pacotes, require, character = T)
+} else {
+  sapply(pacotes, require, character = T)
+}
+```
+
+  Para as análises deste trabalho foram utilizadas as seguintes ferramentas para análise do controle de qualidade e mapeamento na ferramenta baqcom: 1. Controle de qualidade: Trimmomatic v 0.38 (<http://www.usadellab.org/cms/?page=trimmomatic> ou <https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC4103590/>). 2. STAR v. 2.7.9a (<https://github.com/alexdobin/STAR> ou <https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC3530905/>). O STAR usa o htseq counts para contar o número de reads por gene. Usamos a opção stranded já que a biblioteca é do tipo stranded (reverse). Para fazer o mapeamento temos que ter o arquivo de genomas (.fa) e de anotação montagem de Ensembl 108.
+
+ As análises estatísticas foram realizadas no pacote EdgeR, limma, DESeq e noiseq do R. Eu sigo em sua maioria o tutorial RNA-Seq analysis is easy as 1-2-3 with limma, Glimma e edgeR (<https://doi.org/10.12688/f1000research.9005.3>) e para montar os modelos o paper "A guide to create design matrices for gene expression experiments (<https://doi.org/10.12688/f1000research.27893.1>) ;
+
+## 1. Local onde estao as análises:
+
+```{r, results='hide'}
+setwd("G:/Meu Drive/Embrapa/Curso_GDMA_2023/analises")
+```
+
+## 2. Chamar o arquivo com informação das amostras
+```{r}
+amostras <- read.table("amostras.txt",header=T,as.is=T)
+print(amostras)
+```
+
+```{r}
+#incluir informacao dos arquivos na amostra
+
+files <- c("04-GeneCountsSTAR/T16A_ReadsPerGene.counts",  "04-GeneCountsSTAR/T17N_ReadsPerGene.counts",
+           "04-GeneCountsSTAR/T42N_ReadsPerGene.counts","04-GeneCountsSTAR/T44N_ReadsPerGene.counts",
+           "04-GeneCountsSTAR/T47A_ReadsPerGene.counts","04-GeneCountsSTAR/T49A_ReadsPerGene.counts")
+
+amostras <- mutate(amostras, files)
+
+```
+
+
+## 3. Preparar o arquivo de anotação de genes do biomart
+
+```{r, results='hide', warning=FALSE}
+#para ver bases de dados disponiveis do Ensembl
+listEnsembl()
+listEnsemblArchives()
+
+#para ver espécies disponiveis do Ensembl
+mart <- useEnsembl("ensembl")
+listDatasets(mart)
+
+#chamar o Ensembl genes da galinha
+ensembl109 <- useEnsembl(biomart = 'genes', 
+                         dataset = 'ggallus_gene_ensembl',
+                         version = 109)
+
+#ver quais as informacoes disponiveis
+attributes <- listAttributes(ensembl109)
+
+#gerar um dataframe/tabela com as informacoes desejadas
+genes <- getBM(attributes = c('ensembl_gene_id','external_gene_name', 'description', 'chromosome_name',
+                              'start_position', 'end_position', 'gene_biotype', 'wikigene_name',
+                              'hgnc_symbol', 'percentage_gene_gc_content', "gene_biotype"),
+               mart = ensembl109)
+
+#verificar se ha genes com mesmo nome
+genes <- genes[!duplicated(genes$ensembl_gene_id),]
+dim(genes)
+
+# ordenar por ordem alfabetica
+genes <- genes[order(genes$ensembl_gene_id),]
+```
+
+## 4. Preparar o objeto com readDGE para fazer uma matriz com contagem de todas as amostras
+
+```{r, results='hide', warning=FALSE}
+#incluindo nome dos files no dataframe:
+
+d <- readDGE(files, header = F)
+d$counts <- d$counts[order(rownames(d$counts)),]
+class(d)
+dim(d$counts)
+d.full <- d # objeto backup, caso queria voltar ao original
+
+#Para ver se da match os dois dataframes na mesma ordem, pois counts e anotacao tem que estar na mesma ordem
+match(genes$ensembl_gene_id,row.names(d$counts))
+summary(match(genes$ensembl_gene_id,row.names(d$counts)))
+
+```
+
+## 5. Criando objetos para colocar na DGE-list**
+
+#5.1. Criando novos objetos que serão incluídos na DGE-list mais pra frente
+
+```{r, results='hide', warning=FALSE}
+samplenames <- amostras$Sample_ID
+samplenames
+
+group <- as.factor(amostras$Treatment)
+group
+```
+
+#5.2. Para adicionar mais informações na DGE-list
+
+```{r}
+colnames(d) <- samplenames
+head(d)
+
+d$samples$group <- group
+
+d$genes <- genes
+d$genes
+
+```
+
+################### Verificação o perfil das sequencias(reads) obtidas ##################
+
+  Aqui usamos as ferramentas para visualização dos dados antes da filtragem. 
+
+## 6. Verificando features (genes) e não mapeados, e multimapeados**
+
+```{r}
+dim(d$counts)
+```
+
+  Acima podemos ver que os arquivos de contagem tem 30112 linhas (correspondem ao mesmo número de genes/ Ensembl ID) e que temos 6 amostras (arquivos).
+
+#7. Verificando e removendo os multimapeados das contagens na lista d
+
+```{r}
+noint = rownames(d$counts) %in% c("N_unmapped","N_multimapping","N_noFeature",
+                                  "N_ambiguous")
+head(noint)
+mean(colSums(d$counts[!noint,])/colSums(d$counts))
+
+```
+
+    Com os resultados acima, vemos que 78,16% das reads mapeadas estao em features (Genes).
+
+############################PRE PROCESSAMENTO E FILTRAGEM DOS DADOS ################################## 
+
+##8. Pre-processamento dos dados
+
+Fazemos esta etapa antes de iniciar as análises em geral.
+
+```{r, results='hide', warning=FALSE}
+cpm <- cpm(d)
+lcpm <- cpm(d, log=TRUE)
+```
+
+## 9. Verificando o tamanho das bibliotecas
+
+```{r, results='hide', warning=FALSE}
+#Fazendo a média e mediana para verificar o tamanho de bibliotecas
+L <- mean(d$samples$lib.size) * 1e-6
+M <- median(d$samples$lib.size) * 1e-6
+c(L, M)
+
+L_million <- mean(d$samples$lib.size) 
+M_million <- median(d$samples$lib.size) 
+c(L_million, M_million)
+
+#Verificando estatísticas descritivas e salvando
+summary(lcpm)
+summary(cpm(d))
+write.table(summary(lcpm),"summary_lcpm_curso_GDMA_E109.txt", sep="\t") 
+#para salvar o summary
+write.table(summary(cpm(d)),"summary_cpm_curso_GDMA_E109.tx.txt", sep="\t") 
+
+```
+
+     Como pode-se observar temos em torno de 16.271 (media) e 16.267 (mediana) milhoes de  reads por amostra.
+
+```{r, warning=FALSE}
+#para ver quantas reads tem por amostra (em milhoes de reads)
+barplot(colSums(d$counts)/10^6)
+```
+
+## 10. Verificando genes expressos pouco expressos
+    
+
+```{r, results='hide', warning=FALSE}}
+#verificando quantos genes tem contagem 0 para todas as amostras
+table(rowSums(d$counts==0)==6)
+```
+  7135 genes apresentaram 0 reads em todas as 6 amostras.
+
+```{r, results='hide', warning=FALSE}
+#verificando quantos genes sao filtrados caso selecionemor por no mínimo 1 cpm
+sum(rowSums(cpm(d)) >= 1)
+```
+  16254 genes tem mais de 1 cpm considerando as 6 amostras 
+  
+```{r}
+#verificando quantos genes sao filtrados caso selecionemor por no mínimo 1 cpm em 70% das amostras
+keep_70 <- rowSums(cpm(d) >= 1) >= 4
+table(keep_70)
+d_70 <- d[keep_70,]
+```
+12695 genes tem mais de 1 cpm considerando as 6 amostras
+
+```{r, results='hide', warning=FALSE}}
+#Verificando genes exclusivos em cada grupo, talvez possa ser interessante
+
+exclusivos_controle <-as.data.frame(d$counts) %>% dplyr::filter((T16A == 0 & T47A == 0 & T49A == 0) & (T17N != 0 & T42N != 0 & T44N != 0))
+dim(exclusivos_controle)
+
+exclusivos_controle_cpm <-as.data.frame(cpm) %>% dplyr::filter((T16A == 0 & T47A == 0 & T49A == 0) & (T17N != 0 & T42N != 0 & T44N != 0))
+dim(exclusivos_controle)
+
+exclusivos_afetado <-as.data.frame(d$counts) %>% dplyr::filter((T16A != 0 & T47A != 0 & T49A != 0) & (T17N == 0 & T42N == 0 & T44N == 0))
+dim(exclusivos_afetado)
+
+exclusivos_afetado_cpm <-as.data.frame(cpm) %>% dplyr::filter((T16A != 1 & T47A != 1 & T49A != 1) & (T17N == 0 & T42N == 0 & T44N == 0))
+dim(exclusivos_afetado_cpm)
+```
+
+
+```{r}
+#verificando a filtragem com o filter by expression, parametros normais e mais estringente
+#keep.exprs <- filterByExpr(d, group=group) 
+#d1 <- d[keep.exprs,, keep.lib.sizes=FALSE]
+#summary(keep.exprs)
+
+#aqui usei min.count de 100, pois 100 é a quantidade de reads para que pelo menos 5, amostras tenham aproximadamente 1 cpm por amostra em pelo menos 80% das amostras do grupo.
+
+keep.exprs <- filterByExpr(d, group=group,  min.count= 100, min.prop = 0.8) 
+d <- d[keep.exprs,, keep.lib.sizes=FALSE]
+summary(keep.exprs)
+
+```
+
+Considerando o filtro utilizado, 10186 foram mantidos (expressos) e 19926 foram filtrados. 
+
+```{r }
+#12.1.Para construir as figuras com os dados de raw data e filtrados:
+
+lcpm.cutoff <- log2(10/M + 2/L)
+library(RColorBrewer)
+#pdf('Raw_filtered_Ivan.pdf')
+nsamples <- ncol(d)
+col <- brewer.pal(nsamples, "Paired")
+par(mfrow=c(1,2))
+plot(density(lcpm[,1]), col=col[1], lwd=2, ylim=c(0,0.50), las=2, main="", xlab="")
+#title(main = "A. Raw data", xlab = "Log-cpm")
+abline(v=lcpm.cutoff, lty=3)
+for (i in 2:nsamples){
+  den <- density(lcpm[,i])
+  lines(den$x, den$y, col=col[i], lwd=2)
+}
+#legend("topright", samplenames, text.col=col, bty="n")
+lcpm <- cpm(d, log=TRUE)
+plot(density(lcpm[,1]), col=col[1], lwd=2, ylim=c(0,0.5), las=2, main="", xlab="")
+#title(main="B. Filtered data", xlab="Log-cpm")
+abline(v=lcpm.cutoff, lty=3)
+for (i in 2:nsamples){
+  den <- density(lcpm[,i])
+  lines(den$x, den$y, col=col[i], lwd=2)
+}
+#legend("topright", samplenames, text.col=col, bty="n")
+#dev.off() 
+```
+
+
+## 11.Normalizando as distribuições de expressão gênica (Normalising gene expression distributions)**
+
+    E necessário calcular um fator de normalizacao baseado na quantidade de reads das bibliotecas. Para isso, utilizamos o comando abaixo e método TMM (trimmed mean of M-values). Este metodo  estima a qualidade de niveis de expressão baseada na quantidade de reads por amostra.
+
+```{r}
+d <- calcNormFactors(d)
+d$samples$norm.factors
+```
+
+```{r}
+#To give a better visual representation of the effects of normalisation, 
+#the data was duplicated then adjusted so that the counts of the first sample are reduced 
+#to 5% of their original values, and in the second sample they are inflated to be 5-times larger.
+
+x2 <- d
+x2$samples$norm.factors <- 1
+x2$counts[,1] <- ceiling(x2$counts[,1]*0.05)
+x2$counts[,2] <- x2$counts[,2]*5
+
+#4.1. Para produzir as figuras acima
+par(mfrow=c(1,2))
+lcpm <- cpm(x2, log=TRUE)
+boxplot(lcpm, las=2, col=col, main="")
+#title(main="A. Example: Unnormalised data",ylab="Log-cpm")
+x2 <- calcNormFactors(x2)  
+x2$samples$norm.factors
+
+lcpm <- cpm(x2, log=TRUE)
+boxplot(lcpm, las=2, col=col, main="")
+#title(main="B. Example: Normalised data",ylab="Log-cpm")
+```
+
+###12. Avaliando de acordo com MDS e PCA plot
+
+```{r}
+#para ver cores diferentes para colorir os graficos
+piratepal(palette = "all")
+
+#criar um vetor com a paleta de cor desejada piratepal
+cores.google <- piratepal(palette = "google", trans = 0)
+cores.info2 <- piratepal(palette = "info2", trans = 0)
+cores.pony <- piratepal(palette = "pony", trans = 0)
+cores.info <- piratepal(palette = "info", trans = 0)
+cores.basel <- piratepal(palette = "basel", trans = 0)
+cores.eternal <- piratepal(palette = "eternal", trans = 0)
+cores.evildead <- piratepal(palette = "evildead", trans = 0)
+cores.xmen <- piratepal(palette = "xmen", trans = 0)
+cores.appletv <- piratepal(palette = "appletv", trans = 0)
+```
+
+#12.1. PCA das amostras
+
+```{r}
+sample_id = apply(amostras[,c("Sample_ID","Treatment")],1,function(x) paste(na.exclude(x),collapse="_")) 
+```
+
+```{r}
+plotMDS(d, label=sample_id, col =rainbow(length(levels(factor(group))))[factor(group)],cex=1.0,main="PCA", gene.selection = "common")
+
+plotMDS(d, label=sample_id, col = cores.google[factor(group)],cex=1.1,main="PCA", gene.selection = "common")
+```
+
+#12.2. MDS das amostras
+
+```{r}
+plotMDS(d, label=sample_id, col = cores.google[factor(group)],cex=1.1,main="MDS")
+plotMDS(d, label=sample_id, col = cores.xmen[factor(group)],cex=1.1,main="MDS")
+plotMDS(d, label=sample_id, col = cores.pony[factor(group)],cex=1.0,main="MDS")
+
+glMDSPlot(lcpm, labels=sample_id, groups=group, launch=FALSE)
+```
+
+##13. Criar matriz de design
+
+```{r}
+design <- model.matrix(~0+group)
+colnames(design) <- gsub("group", "", colnames(design))
+rownames(design) <- samplenames
+
+contr.matrix <- makeContrasts("Afetado-Normal"=afetado-controle, levels=design)
+```
+
+##14.Analise de expressão diferencial** 
+
+  O limma sugere realizar a normalizacao com voom para diminuir a heterocedasticidade das amostras, pois observa-se que a variância das contagens nao e so dependente da media. No limma, a modelagem assume que os dados de log-CPM apresentam distribuicao normal e a variancia media ao acomodade usando o peso calculado pelo comando voom. Desta forma, o voom converte as contagens brutas em log-CPM considerando os fatores de normalizacao. Quando ha variacao evidente entre as amostras, sugere-se utilizar o voomwithQualityweights, que incorpora simultaneamente peso as amostras com dependência dos valores estimados pelo voom. Usei o voom normal.
+
+#14.1. Fazendo análise com voom 
+
+```{r}
+v <- voom(d, design = design, plot = TRUE)
+vfit <- lmFit(v, design)
+vfit <- contrasts.fit(vfit, contrast=contr.matrix)
+efit <- eBayes(vfit)
+plotSA(efit)
+```
+
+```{r}
+summary(decideTests(efit))
+edt <- decideTests(efit)
+```
+
+```{r}
+#outras formas de selecionar os dados de DEG caso seja de interesse
+
+#Considerando só lfc > 1
+tfit <- treat(vfit, fc=1.1, )
+dt <- decideTests(tfit)
+summary(dt)
+```
+
+```{r}
+#Verificando os genes DE 
+
+DEG_osso <- topTable(efit, n=Inf, coef=1, adjust.method="BH", p.value=0.05, sort.by = "p")
+todos_ossos <- topTable(efit, n=Inf, coef=1, adjust.method="BH", p.value=1, sort.by = "p")
+sort_logFC <- topTable(efit, n=Inf, coef=1, adjust.method="BH", p.value=0.05, sort.by = "p", resort.by="logFC") #ordena por p e depois logFC
+sort_logFC_2 <- topTable(efit, n=Inf, coef=1, adjust.method="BH", p.value=0.05, sort.by = "logFC", resort.by="logFC") #ordena por logFC positivo para o negativo
+
+#Salvando as tabelas
+
+write.table(DEG_osso, file="DEG_osso.txt", sep = "\t")
+write.fit(efit,  method = "separate", F.adjust = "none", quote = FALSE, sep = "\t", file="DEG_osso_fit", row.names = TRUE)
+
+```
+
+##15. Gráficos para explorar os dados
+```{r}
+#MDplot
+
+pdf("plotMD_todos_DE.pdf")
+plotMD(efit, column = 1, status = edt[,1], xlab = "Average log-expression", ylab = "Expression log-ratio (Afetado x controle)")
+dev.off()
+
+#glMDplot é o meso gráfico acima só que é interativo
+
+glMDPlot(efit, column = 1, status = edt[,1], main=colnames(vfit) [1],group=group, counts=lcpm, launch=FALSE, html="Genes_DE",
+         folder ="Genes_DE" )
+```
+
+```{r}
+#Heatmap
+pdf("heatmap_todosgenes.pdf")
+coolmap(d, cluster.by="de pattern", col="redgreen",
+        linkage.row="complete", linkage.col="complete", show.dendrogram="both" )
+dev.off()
+
+#Heatmap dos DE
+
+afetado.vs.controle <- DEG_osso$ensembl_gene_id
+coolmap(lcpm[afetado.vs.controle,], cluster.by="de pattern", col="redgreen",
+        linkage.row="complete", linkage.col="complete", show.dendrogram="both",labCol=group)
+```
+
+
+```{r}
+#outros plots
+glimmaMA(efit, dge = d , counts = d$counts, groups=d$samples$group, coef = "Afetado-Normal",  p.adj.method = "BH", html="Afetado-normal_MA.html")
+
+glimmaVolcano(efit, dge = v, anno = v$genes, html="volcano.html")
+
+
+volcanoplot(efit, coef = 1, style = "p-value", highlight = 10, names = efit$genes$external_gene_name, hl.col="blue",
+            xlab = "Log2 Fold Change", ylab = NULL, pch=12, cex=0.20)
+```
+
+```{r}
+ BiocManager::install('EnhancedVolcano')
+   library(EnhancedVolcano)
+
+#volcano 1
+EnhancedVolcano(todos_ossos,
+    lab = todos_ossos$external_gene_name,
+    x = "logFC",
+    y = "P.Value",
+    ylim = c(0, 5),
+    pCutoff = 3.089405e-04,
+    #FCcutoff = 1.1,
+    gridlines.major = FALSE, gridlines.minor = FALSE,
+     labSize = 3.5,
+    #colAlpha = 1,
+    drawConnectors = T,
+    labFace = 'italic',
+    #widthConnectors = 0.1,
+    col=c('black', 'black', 'black', 'red3'))
+
+```
+
+
+```{r, echo = FALSE}
+#Inspecionando contagens para ver conferir se está tudo certo:
+
+#salvando as contagens fitted
+write.csv(vfit$coefficients, "counts_fitted.csv")
+counts_fitted <- vfit$coefficients 
+vfit$coefficients[rownames(vfit$coefficients) == "ENSGALG00010007546" ]
+
+#ou verificar no arquivo de cpm
+write.csv(cpm, "cpm.csv")
+cpm[rownames(cpm) == "ENSGALG00010007546"]
+
+media_afetados <- as.data.frame(rowMeans(cpm[,c(1,5,6)]))
+media_controle <- as.data.frame(rowMeans(cpm[,c(2,3,4)]))
+```
+
+##16. Analises Funcionais
+
+```{r}
+#instalação pacotes analises funcionais
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    BiocManager::install("BiocManager")
+
+BiocManager::install(c("topGO", "PANTHER.db", "msigdbr", "DOSE", "org.Gg.eg.db",
+                       "AnnotationHub", "clusterProfiler", "GOSemSim"))
+
+lapply(c("topGO", "PANTHER.db", "msigdbr", "DOSE", "org.Gg.eg.db",
+        "AnnotationHub", "clusterProfiler", "GOSemSim"), require, character.only = TRUE)
+
+```
+
+#############################ANALISES COM AVES############################################
+
+
+#16.1. Para fazer enrichment analysis com clusterProfiler
+  O clusterProfiler tem um tutorial completo neste link: https://yulab-smu.top/biomedical-knowledge-mining-book/
+
+```{r}
+genes <- dplyr::select(DEG_osso, external_gene_name, logFC)
+geneList <- genes[,2]
+names(geneList) <- as.character(genes[,1])
+geneList <- sort(geneList, decreasing = TRUE)
+gene <- names(geneList)
+head(gene)
+
+#Para fazer o background
+
+genes_background <- dplyr::select(todos_ossos, external_gene_name, logFC)
+geneList_background <- genes_background[,2]
+names(geneList_background) <- as.character(genes_background[,1])
+geneList_background <- sort(geneList_background, decreasing = TRUE)
+gene_background <- names(geneList_background)
+head(gene_background)
+```
+```{r}
+#Para converter Entrez ID para gene symbol ou Ensembl qdo necessario
+gene.entrez <- bitr(gene, fromType = "SYMBOL",
+        toType = ("ENTREZID"),
+        OrgDb = org.Gg.eg.db)
+gene.entrez <- gene.entrez[,2]
+head(gene.entrez)
+```
+##16.2. Analises de ontologias genicas
+
+```{r}
+
+#Para converter Entrez ID para gene symbol ou Ensembl ==> como já tinha convertido em gene symbol, nao usei
+#gene.df <- bitr(gene, fromType = "ENTREZID",
+#        toType = c("ENSEMBL", "SYMBOL"),
+#        OrgDb = org.Gg.eg.db)
+#head(gene.df)
+```
+
+###16.2.1. GO baseada em BIOLOGICAL PROCESSES (BP) e enriquecimento de GO
+
+  bp = The larger processes, or 'biological programs' accomplished by multiple molecular activities.
+  
+```{r}
+ggo_BP2 <- groupGO(gene     = gene,
+               OrgDb    = org.Gg.eg.db,
+               keyType = "SYMBOL",
+               ont      = "BP",
+               level    = 2,
+               readable = FALSE)
+
+head(ggo_BP2)
+
+```
+
+```{r}
+ego_BP2 <- enrichGO(gene         = gene,
+                OrgDb         = org.Gg.eg.db,
+                keyType       = "SYMBOL",
+                universe = gene_background,
+                ont           = "BP",
+                pvalueCutoff = 0.05,
+                pAdjustMethod = "none",
+                minGSSize = 5,
+                readable=FALSE)
+head(ego_BP2)
+summary(ego_BP2)
+```
+
+Com nível 3 do BP:
+
+```{r}
+ggo_BP3 <- groupGO(gene     = gene,
+               OrgDb    = org.Gg.eg.db,
+               keyType = "SYMBOL",
+               ont      = "BP",
+               level    = 3,
+               readable = FALSE)
+
+head(ggo_BP3)
+
+```
+
+```{r}
+ego_BP3 <- enrichGO(gene         = gene,
+                OrgDb         = org.Gg.eg.db,
+                keyType       = "SYMBOL",
+                universe = gene_background,
+                ont           = "BP",
+                pvalueCutoff = 0.05,
+                pAdjustMethod = "BH",
+                minGSSize = 5,
+                readable=FALSE)
+head(ego_BP3)
+summary(ego_BP3)
+```
+
+```{r}
+ego_BP2_simplify <- simplify(ego_BP2, cutoff=0.2, by="p.adjust", select_fun=min)
+head(ego_BP2_simplify)
+goplot(ego_BP2_simplify, max.overlaps=2)
+
+ego_BP3_simplify <- simplify(ego_BP3, cutoff=0.9, by="p.adjust", select_fun=min)
+head(ego_BP3_simplify)
+goplot(ego_BP3_simplify, max.overlaps=Inf)
+```
+
+
+Com nível 4 do BP:
+
+```{r}
+ggo_BP4 <- groupGO(gene     = gene,
+               OrgDb    = org.Gg.eg.db,
+               keyType = "SYMBOL",
+               ont      = "BP",
+               level    = 4,
+               readable = FALSE)
+
+head(ggo_BP4)
+
+```
+
+```{r}
+ego_BP4 <- enrichGO(gene         = gene,
+                OrgDb         = org.Gg.eg.db,
+                keyType       = "SYMBOL",
+                universe = gene_background,
+                ont           = "BP",
+                pvalueCutoff = 0.05,
+                pAdjustMethod = "BH",
+                minGSSize = 5,
+                readable=FALSE)
+head(ego_BP4)
+summary(ego_BP3)
+```
+
+```{r}
+ego_BP2_simplify <- simplify(ego_BP2, cutoff=0.9, by="p.adjust", select_fun=min)
+head(ego_BP2_simplify)
+goplot(ego_BP2_simplify, max.overlaps=2)
+
+ego_BP3_simplify <- simplify(ego_BP3, cutoff=0.9, by="p.adjust", select_fun=min)
+head(ego_BP3_simplify)
+goplot(ego_BP3_simplify, max.overlaps=Inf)
+
+
+```
+
+###16.2.2. GO baseada em MOLECULAR FUNCTION (MF)
+
+  MF = Molecular-level activities performed by gene products. Molecular function terms describe activities that occur at the molecular level, such as "catalysis" or "transport". GO molecular function terms represent activities rather than the entities (molecules or complexes) that perform the actions, and do not specify where, when, or in what context the action takes place. Molecular functions generally correspond to activities that can be performed by individual gene products (i.e. a protein or RNA), but some activities are performed by molecular complexes composed of multiple gene products.
+  
+```{r}
+ggo_MF3 <- groupGO(gene     = gene,
+               OrgDb    = org.Gg.eg.db,
+               ont      = "MF",
+               level    = 3,
+               readable = FALSE)
+
+head(ggo_MF3)
+
+```
+
+```{r}
+ggo_MF2 <- groupGO(gene     = gene,
+               OrgDb    = org.Gg.eg.db,
+               ont      = "MF",
+               level    = 2,
+               readable = FALSE)
+
+head(ggo_MF2)
+```
+
+```{r}
+ego_MF2 <- enrichGO(gene       = gene,
+                universe = gene_background,
+                keyType       = "SYMBOL",
+                OrgDb         = org.Gg.eg.db,
+                ont           = "MF",
+                pvalueCutoff = 0.05,
+                pAdjustMethod = "none",
+                minGSSize = 5,
+                 readable      = FALSE)
+head(ego_MF2)
+
+```
+
+```{r}
+ego_MF3 <- enrichGO(gene       = gene,
+                universe = gene_background,
+                keyType       = "SYMBOL",
+                OrgDb         = org.Gg.eg.db,
+                ont           = "MF",
+                pvalueCutoff = 0.05,
+                pAdjustMethod = "none",
+                minGSSize = 5,
+                 readable      = FALSE)
+head(ego_MF3)
+```
+
+###16.2.3. GO baseada em COMPONENTE CELULAR (CC)
+
+  CC = The locations relative to cellular structures in which a gene product performs a function, either cellular compartments (e.g., mitochondrion), or stable macromolecular complexes of which they are parts (e.g., the ribosome). Unlike the other aspects of GO, cellular component classes refer not to processes but rather a cellular anatomy.
+  
+```{r}
+ggo_CC2 <- groupGO(gene     = gene,
+               OrgDb    = org.Bt.eg.db,
+               ont      = "CC",
+               level    = 2,
+               readable = FALSE)
+
+head(ggo_CC2)
+
+```
+
+```{r}
+ggo_CC3 <- groupGO(gene     = gene,
+               OrgDb    = org.Bt.eg.db,
+               ont      = "CC",
+               level    = 3,
+               readable = FALSE)
+
+head(ggo_CC3)
+
+```
+
+```{r}
+ego_CC2 <- enrichGO(gene       = gene,
+                universe = gene_background,
+                keyType       = "SYMBOL",
+                OrgDb         = org.Bt.eg.db,
+                ont           = "CC",
+                pvalueCutoff = 0.05,
+                pAdjustMethod = "none",
+                minGSSize = 5,
+                readable      = FALSE)
+head(ego_CC2)
+```
+
+
+```{r}
+library(ggplot2)
+library(forcats)
+ggplot(ego_BP2, showCategory = 5,
+aes(GeneRatio,
+fct_reorder(Description, Count))) +
+geom_segment(aes(xend=0, yend = Description)) +
+geom_point(aes(color=p.adjust, size = Count)) +
+#scale_color_gradient
+#(colours=c("#f7ca64", "#46bac2","#7e62a3"),
+#trans = "log10",
+#guide=guide_colorbar(reverse=TRUE, order=1)) +
+scale_size_continuous(range=c(2, 10)) +
+theme_dose(12) +
+xlab("Gene Ratio") +
+#lab(NULL) +
+ggtitle("Biological Processes")
+
+```
+
+```{r}
+library("cowplot")
+library(enrichplot)
+
+
+p1 <- cnetplot(ego_BP3, foldChange=geneList)
+## categorySize can be scaled by 'pvalue' or 'geneNum'
+p2 <- cnetplot(ego_BP3, categorySize="geneNum", foldChange=geneList)
+p3 <- cnetplot(ego_BP3, foldChange=geneList, circular = TRUE, colorEdge = TRUE) 
+cowplot::plot_grid(p1, p2, p3, ncol=3, labels=LETTERS[1:3], rel_widths=c(.8, .8, 1.2))
+
+
+cowplot::plot_grid(p1,  p3, ncol=2, labels=LETTERS[1:3], rel_widths=c(.8, .8, 1.2))
+
+p2 <- cnetplot(ego_BP3, categorySize="geneNum", foldChange=geneList)
+p3 <- cnetplot(ego_BP3, foldChange=geneList, circular = TRUE, colorEdge = TRUE) 
+cowplot::plot_grid( p2, p3, ncol=2, labels=LETTERS[1:5], rel_widths=c(.8, .8, 1.2))
+
+```
+
+
+##16.3. Para procurar Molecular Signatures no MSigDb
+
+  O MSigDb tem 8 principais tipos de informacoes: 
+H: hallmark gene sets / C1: positional gene sets/ C2: curated gene sets / C3: motif gene sets / C4: computational gene sets
+C5: GO gene sets / C6: oncogenic signatures / C7: immunologic signatures. 
+  Podemos baixar o arquivo .gmt do MSigDb (Broad Institute) e usar read.gmt ou podemos utilizar o pacote msigdbr do R. (Em geral, depende se o R vai abrir sites externos. Aqui da Embrapa as vezes da erro). Abaixo baixamos todo o MsigDB, mas podemos baixar por categoria tambem.
+
+###16.3.1 Usando a categoria H = Hallmark (hallmark gene sets  are coherently expressed signatures derived by aggregating many MSigDB gene sets to represent well-defined biological states or processes)
+
+```{r}
+library(msigdbr)
+msigdbr_species()
+m_df <- msigdbr(species = "Gallus gallus")
+head(m_df, 2) %>% as.data.frame
+
+#Para fazer a analise usando o Hallmark
+m_t2g <- msigdbr(species = "Gallus gallus", category = "H") %>% 
+  dplyr::select(gs_name, gene_symbol)
+head(m_t2g)
+
+em <- enricher(gene, TERM2GENE=m_t2g, pAdjustMethod = "none")
+head(em)
+#em_name <- setReadable(em, org.Bt.eg.db, keyType =  "ENTREZID")  ==> para converter os IDs, como fiz com gene symbol, nao precisei
+#em_name
+#head(em_name)
+
+em2 <- GSEA(geneList, TERM2GENE = m_t2g, pvalueCutoff = 0.2, pAdjustMethod = "none")
+
+```
+###16.3.2. Usando a categoria C2 = curated gene sets  from online pathway databases, publications in PubMed, and knowledge of domain experts.**
+```{r}
+library(msigdbr)
+msigdbr_show_species()
+m_df <- msigdbr(species = "Gallus gallus")
+head(m_df, 2) %>% as.data.frame
+
+m_t2g_C2 <- msigdbr(species = "Gallus gallus", category = "C2") %>% 
+  dplyr::select(gs_name, gene_symbol)
+head(m_t2g_C2)
+
+em_C2 <- enricher(gene, TERM2GENE=m_t2g_C2, pAdjustMethod = "none")
+head(em_C2)
+#em_name_C2 <- setReadable(em_C2, org.Gg.eg.db, keyType = "ENTREZID")
+#em_name_C2
+#head(em_name_C2)
+em_c2_df <- as.data.frame(em_C2)
+write.table(em_c2_df, file = "results_c2_misigdb_cluteprofileR.txt", sep = "\t")
+
+em2_C2 <- GSEA(geneList, TERM2GENE = m_t2g_C2, pAdjustMethod = "none")
+head(em2_C2)
+#em2_name_C2 <- setReadable(em2_C2, org.Gg.eg.db, keyType = "ENTREZID")
+#em2_name_C2
+#head(em_name_C2)
+
+```
+
+##16.3.3. Usando a categoria C3 = 	regulatory target gene sets  based on gene target predictions for microRNA seed sequences and predicted transcription factor binding sites.
+```{r}
+library(msigdbr)
+msigdbr_show_species()
+m_df <- msigdbr(species = "Gallus gallus")
+head(m_df, 2) %>% as.data.frame
+
+m_t2g_C3 <- msigdbr(species = "Gallus gallus", category = "C3") %>% 
+  dplyr::select(gs_name, gene_symbol)
+head(m_t2g_C3)
+
+em_C3 <- enricher(gene, TERM2GENE=m_t2g_C3, pAdjustMethod = "none")
+head(em_C3)
+#em_name_C3 <- setReadable(em_C3, org.Gg.eg.db, keyType = "ENTREZID") ==> para converter os IDs, como fiz com gene symbol, nao precisei
+#em_name_C3
+#head(em_name_C3)
+#tail(em_name_C3)
+em_c3_df <- as.data.frame(em_C3)
+write.table(em_c3_df, file = "results_c3_misigdb_cluteprofileR.txt", sep = "\t")
+
+em2_C3 <- GSEA(geneList, TERM2GENE = m_t2g_C3, pAdjustMethod = "none")
+head(em2_C3)
+#em2_name_C3<- setReadable(em2_C3, org.Gg.eg.db, keyType = "ENTREZID")
+#em2_name_C3
+#head(em_name_C3)
+
+```
+
+##16.3.4. Usando a categoria C5 = 	ontology gene sets  consist of genes annotated by the same ontology term.
+```{r}
+library(msigdbr)
+msigdbr_show_species()
+m_df <- msigdbr(species = "Gallus gallus")
+head(m_df, 2) %>% as.data.frame
+
+m_t2g_C5 <- msigdbr(species = "Gallus gallus", category = "C5") %>% 
+  dplyr::select(gs_name, gene_symbol)
+head(m_t2g_C5)
+
+em_C5 <- enricher(gene, TERM2GENE=m_t2g_C5, pAdjustMethod = "none")
+head(em_C5)
+#em_name_C5 <- setReadable(em_C5, org.Gg.eg.db, keyType = "ENTREZID")
+#em_name_C5
+#head(em_name_C5)
+#tail(em_name_C5)
+
+em_c5_df <- as.data.frame(em_C5)
+write.table(em_c5_df, file = "results_C5_misigdb_cluteprofileR.txt", sep = "\t")
+
+
+
+em2_C5 <- GSEA(geneList, TERM2GENE = m_t2g_C5, pAdjustMethod = "none")
+head(em2_C5)
+#em2_name_C5 <- setReadable(em2_C5, org.Gg.eg.db, keyType = "ENTREZID")
+#em2_name_C5
+#head(em_name_C5)
+
+```
+
+##16.3.5. Usando a categoria C7 = 		immunologic signature gene sets  represent cell states and perturbations within the immune system.**
+```{r}
+library(msigdbr)
+msigdbr_species()
+m_df <- msigdbr(species = "Gallus gallus")
+head(m_df, 2) %>% as.data.frame
+
+m_t2g_C7 <- msigdbr(species = "Gallus gallus", category = "C7") %>% 
+  dplyr::select(gs_name, gene_symbol)
+head(m_t2g_C7)
+
+
+em_C7 <- enricher(gene, TERM2GENE=m_t2g_C7, pAdjustMethod = "none")
+head(em_C7)
+#em_name_C7 <- setReadable(em_C7, org.Gg.eg.db, keyType = "ENTREZID")
+#em_name_C7
+#head(em_name_C7)
+#tail(em_name_C7)
+
+em_c7_df <- as.data.frame(em_C7)
+
+em2_C7 <- GSEA(geneList, TERM2GENE = m_t2g_C7, pAdjustMethod = "none")
+head(em2_C7)
+#em2_name_C7 <- setReadable(em2_C7, org.Gg.eg.db, keyType = "ENTREZID")
+#em2_name_C7
+#head(em2_name_C7)
+```
+
+##16.4.  KEGG over-representation test 
+
+```{r}
+search_kegg_organism('gga', by='kegg_code')
+
+kk <- enrichKEGG(gene = gene.entrez, organism = 'gga', use_internal_data = FALSE, pvalueCutoff = 0.20)
+head(kk)
+```

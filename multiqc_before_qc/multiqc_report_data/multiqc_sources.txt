@@ -1,0 +1,5 @@
+Module	Section	Sample Name	Source
+FastQC	all_sections	T17N-500K_L001_R1_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_before_qc/T17N-500K_L001_R1_001_fastqc.zip
+FastQC	all_sections	T16A-500K_L001_R2_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_before_qc/T16A-500K_L001_R2_001_fastqc.zip
+FastQC	all_sections	T16A-500K_L001_R1_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_before_qc/T16A-500K_L001_R1_001_fastqc.zip
+FastQC	all_sections	T17N-500K_L001_R2_001	/localData/alunos/haniel.cedraz/bioinfo_gdma_2023/fastqc_before_qc/T17N-500K_L001_R2_001_fastqc.zip

@@ -99,6 +99,7 @@ dependencies:
   - xz=5.2.10=h5eee18b_1
   - yaml=0.1.7=had09818_2
   - zlib=1.2.13=h5eee18b_0
+  - trinity=2.15.1
   - pip:
       - multiqc==0.4
 prefix: /home/hanieltemp/miniconda3/envs/curso_RNA-Seq

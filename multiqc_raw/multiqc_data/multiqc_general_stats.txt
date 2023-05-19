@@ -1,3 +1,0 @@
-Sample	FastQC_mqc-generalstats-fastqc-percent_duplicates	FastQC_mqc-generalstats-fastqc-percent_gc	FastQC_mqc-generalstats-fastqc-avg_sequence_length	FastQC_mqc-generalstats-fastqc-percent_fails	FastQC_mqc-generalstats-fastqc-total_sequences
-T16A_ACAGTG_L001_R1_001	38.87214483298017	51.0	101.0	0.0	12424755.0
-T16A_ACAGTG_L001_R2_001	37.30557929456507	50.0	101.0	9.090909090909092	12424755.0

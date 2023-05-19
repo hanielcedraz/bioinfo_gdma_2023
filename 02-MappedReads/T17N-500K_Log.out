@@ -2,37 +2,37 @@ STAR version=2.7.10a
 STAR compilation time,server,dir=2022-01-14T18:50:00-05:00 :/home/dobin/data/STAR/STARcode/STAR.master/source
 STAR git: On branch master ; commit ae26add7ea1724f3281ec8abedb71bcff6a4ae73 ; diff files: CHANGES.md README.md RELEASEnotes.md doc/STARmanual.pdf extras/doc-latex/STARmanual.tex extras/doc-latex/convertParDefToLatexTable.awk extras/doc-latex/parametersDefault.tex extras/docker/Dockerfile source/VERSION 
 ##### Command Line:
-STAR --genomeDir reference_genome/index_STAR --readFilesCommand zcat --readFilesIn 01-CleanedReads/T17N-500K_L001_PE1.fastq.gz 01-CleanedReads/T17N-500K_L001_PE2.fastq.gz --outSAMtype BAM Unsorted SortedByCoordinate --sjdbGTFfile reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.109.gtf --quantMode GeneCounts --outFileNamePrefix 02-MappedReads/T17N-500K_
+STAR --genomeDir reference_genome/index_STAR/ --readFilesIn 01-CleanedReads/T17N-500K_L001_PE1.fastq.gz 01-CleanedReads/T17N-500K_L001_PE2.fastq.gz --outSAMtype BAM SortedByCoordinate --sjdbGTFfile reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.109.gtf --quantMode GeneCounts --outFileNamePrefix 02-MappedReads/T17N-500K_ --readFilesCommand zcat
 ##### Initial USER parameters from Command Line:
 outFileNamePrefix                 02-MappedReads/T17N-500K_
 ###### All USER parameters from Command Line:
-genomeDir                     reference_genome/index_STAR     ~RE-DEFINED
-readFilesCommand              zcat        ~RE-DEFINED
+genomeDir                     reference_genome/index_STAR/     ~RE-DEFINED
 readFilesIn                   01-CleanedReads/T17N-500K_L001_PE1.fastq.gz   01-CleanedReads/T17N-500K_L001_PE2.fastq.gz        ~RE-DEFINED
-outSAMtype                    BAM   Unsorted   SortedByCoordinate        ~RE-DEFINED
+outSAMtype                    BAM   SortedByCoordinate        ~RE-DEFINED
 sjdbGTFfile                   reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.109.gtf     ~RE-DEFINED
 quantMode                     GeneCounts        ~RE-DEFINED
 outFileNamePrefix             02-MappedReads/T17N-500K_     ~RE-DEFINED
+readFilesCommand              zcat        ~RE-DEFINED
 ##### Finished reading parameters from all sources
 
 ##### Final user re-defined parameters-----------------:
-genomeDir                         reference_genome/index_STAR
+genomeDir                         reference_genome/index_STAR/
 readFilesIn                       01-CleanedReads/T17N-500K_L001_PE1.fastq.gz   01-CleanedReads/T17N-500K_L001_PE2.fastq.gz   
 readFilesCommand                  zcat   
 outFileNamePrefix                 02-MappedReads/T17N-500K_
-outSAMtype                        BAM   Unsorted   SortedByCoordinate   
+outSAMtype                        BAM   SortedByCoordinate   
 sjdbGTFfile                       reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.109.gtf
 quantMode                         GeneCounts   
 
 -------------------------------
 ##### Final effective command line:
-STAR   --genomeDir reference_genome/index_STAR   --readFilesIn 01-CleanedReads/T17N-500K_L001_PE1.fastq.gz   01-CleanedReads/T17N-500K_L001_PE2.fastq.gz      --readFilesCommand zcat      --outFileNamePrefix 02-MappedReads/T17N-500K_   --outSAMtype BAM   Unsorted   SortedByCoordinate      --sjdbGTFfile reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.109.gtf   --quantMode GeneCounts   
+STAR   --genomeDir reference_genome/index_STAR/   --readFilesIn 01-CleanedReads/T17N-500K_L001_PE1.fastq.gz   01-CleanedReads/T17N-500K_L001_PE2.fastq.gz      --readFilesCommand zcat      --outFileNamePrefix 02-MappedReads/T17N-500K_   --outSAMtype BAM   SortedByCoordinate      --sjdbGTFfile reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.109.gtf   --quantMode GeneCounts   
 ----------------------------------------
 
 Number of fastq files for each mate = 1
 
    Input read files for mate 1 :
--rw-rw-r--. 1 haniel.cedraz alunos 15311492 Mai 13 14:39 01-CleanedReads/T17N-500K_L001_PE1.fastq.gz
+-rw-rw-r--. 1 haniel.cedraz alunos 15126696 Mai 17 20:04 01-CleanedReads/T17N-500K_L001_PE1.fastq.gz
 
    readsCommandsFile:
 exec > "02-MappedReads/T17N-500K__STARtmp/tmp.fifo.read1"
@@ -41,7 +41,7 @@ zcat      "01-CleanedReads/T17N-500K_L001_PE1.fastq.gz"
 
 
    Input read files for mate 2 :
--rw-rw-r--. 1 haniel.cedraz alunos 15296528 Mai 13 14:39 01-CleanedReads/T17N-500K_L001_PE2.fastq.gz
+-rw-rw-r--. 1 haniel.cedraz alunos 15191900 Mai 17 20:04 01-CleanedReads/T17N-500K_L001_PE2.fastq.gz
 
    readsCommandsFile:
 exec > "02-MappedReads/T17N-500K__STARtmp/tmp.fifo.read2"
@@ -288,7 +288,7 @@ Number of real (reference) chromosomes= 214
 213	JAENSK010000675.1	1713	1091567616
 214	JAENSK010000676.1	1437	1091829760
 --sjdbOverhang = 100 taken from the generated genome
-Started loading the genome: Sat May 13 18:12:49 2023
+Started loading the genome: Wed May 17 21:17:17 2023
 
 Genome: size given as a parameter = 1143330824
 SA: size given as a parameter = 9082686768
@@ -302,84 +302,84 @@ Loading Genome ... done! state: good=1 eof=0 fail=0 bad=0; loaded 1143330824 byt
 SA file size: 9082686768 bytes; state: good=1 eof=0 fail=0 bad=0
 Loading SA ... done! state: good=1 eof=0 fail=0 bad=0; loaded 9082686768 bytes
 Loading SAindex ... done: 391468491 bytes
-Finished loading the genome: Sat May 13 18:12:55 2023
+Finished loading the genome: Wed May 17 21:17:23 2023
 
 Processing splice junctions database sjdbN=254920,   pGe.sjdbOverhang=100 
 alignIntronMax=alignMatesGapMax=0, the max intron size will be approximately determined by (2^winBinNbits)*winAnchorDistNbins=589824
-May 13 18:12:55   Loaded database junctions from the generated genome reference_genome/index_STAR//sjdbList.out.tab: 254920 total junctions
+May 17 21:17:23   Loaded database junctions from the generated genome reference_genome/index_STAR//sjdbList.out.tab: 254920 total junctions
 
-May 13 18:12:55 ..... processing annotations GTF
+May 17 21:17:23 ..... processing annotations GTF
 Processing pGe.sjdbGTFfile=reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.109.gtf, found:
 		72689 transcripts
 		645197 exons (non-collapsed)
 		254930 collapsed junctions
 Total junctions: 509850
-May 13 18:13:00 ..... finished GTF processing
+May 17 21:17:28 ..... finished GTF processing
 
-May 13 18:13:00   Finished preparing junctions
-May 13 18:13:00 ..... inserting junctions into the genome indices
-May 13 18:13:02   Finished SA search: number of new junctions=0, old junctions=254920
-May 13 18:13:03   Finished sorting SA indicesL nInd=0
+May 17 21:17:28   Finished preparing junctions
+May 17 21:17:28 ..... inserting junctions into the genome indices
+May 17 21:17:30   Finished SA search: number of new junctions=0, old junctions=254920
+May 17 21:17:30   Finished sorting SA indicesL nInd=0
 Genome size with junctions=1143330824  1092091904   51238920
 GstrandBit1=32   GstrandBit=32
-May 13 18:13:34   Finished inserting junction indices
-May 13 18:13:34   Finished SAi
-May 13 18:13:34 ..... finished inserting junctions into genome
+May 17 21:18:02   Finished inserting junction indices
+May 17 21:18:03   Finished SAi
+May 17 21:18:03 ..... finished inserting junctions into genome
 Starting to map file # 0
 mate 1:   01-CleanedReads/T17N-500K_L001_PE1.fastq.gz
 mate 2:   01-CleanedReads/T17N-500K_L001_PE2.fastq.gz
-BAM sorting: 187528 mapped reads
+BAM sorting: 187252 mapped reads
 BAM sorting bins genomic start loci:
-1	0	45802003
-2	0	62491067
-3	0	98452797
-4	0	139060172
-5	0	182284630
-6	1	13996922
-7	1	41613587
-8	1	88908511
-9	1	134435378
-10	2	21653866
-11	2	60963498
-12	2	63707976
-13	2	63708847
-14	2	71198405
-15	2	82574281
-16	2	107299548
-17	3	23377488
-18	3	58116194
-19	4	5529206
-20	4	25102122
-21	4	49809054
-22	5	17745342
-23	6	4449680
-24	6	24878874
-25	7	11017124
-26	7	21518475
-27	8	14659255
-28	9	4207587
-29	9	19844689
-30	10	19466473
-31	12	1498835
-32	12	13457315
-33	13	8811510
-34	14	9443193
-35	16	8125579
-36	17	10560285
-37	19	1003940
-38	19	10916241
-39	20	6381793
-40	22	5235065
-41	24	1718320
-42	26	1270801
-43	27	2546826
-44	33	765947
-45	38	39981
-46	40	24427411
-47	40	64080938
-48	41	8098
+1	0	45746546
+2	0	62482727
+3	0	96731888
+4	0	139041568
+5	0	182284414
+6	1	13871727
+7	1	41294048
+8	1	88171702
+9	1	131209687
+10	2	20439512
+11	2	57724862
+12	2	63707956
+13	2	63708825
+14	2	67286279
+15	2	82570947
+16	2	106979960
+17	3	20647651
+18	3	54475521
+19	4	1802785
+20	4	24078092
+21	4	49555310
+22	5	16713695
+23	6	4444131
+24	6	22196755
+25	7	11007561
+26	7	20632184
+27	8	12434935
+28	9	4169763
+29	9	18898238
+30	10	18715044
+31	11	19917373
+32	12	13141716
+33	13	8175619
+34	14	9268601
+35	16	7474847
+36	17	10474309
+37	18	10272078
+38	19	10915632
+39	20	5724505
+40	22	5234384
+41	24	1159230
+42	26	910549
+43	27	2419873
+44	33	459023
+45	38	39830
+46	40	24040233
+47	40	64080842
+48	41	8061
 Thread #0 end of input stream, nextChar=-1
 Completed: thread #0
-May 13 18:14:06 ..... started sorting BAM
-Max memory needed for sorting = 2810974
+May 17 21:18:38 ..... started sorting BAM
+Max memory needed for sorting = 2779062
 ALL DONE!

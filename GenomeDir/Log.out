@@ -1,0 +1,27 @@
+STAR version=2.7.10a
+STAR compilation time,server,dir=2022-01-14T18:50:00-05:00 :/home/dobin/data/STAR/STARcode/STAR.master/source
+STAR git: On branch master ; commit ae26add7ea1724f3281ec8abedb71bcff6a4ae73 ; diff files: CHANGES.md README.md RELEASEnotes.md doc/STARmanual.pdf extras/doc-latex/STARmanual.tex extras/doc-latex/convertParDefToLatexTable.awk extras/doc-latex/parametersDefault.tex extras/docker/Dockerfile source/VERSION 
+##### Command Line:
+STAR --runMode genomeGenerate 80 reference_genome/index_STAR/ reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.
+##### Initial USER parameters from Command Line:
+###### All USER parameters from Command Line:
+runMode                       genomeGenerate   80   reference_genome/index_STAR/   reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.        ~RE-DEFINED
+##### Finished reading parameters from all sources
+
+##### Final user re-defined parameters-----------------:
+runMode                           genomeGenerate   80   reference_genome/index_STAR/   reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.   
+
+-------------------------------
+##### Final effective command line:
+STAR   --runMode genomeGenerate   80   reference_genome/index_STAR/   reference_genome/Gallus_gallus.bGalGal1.mat.broiler.GRCg7b.   
+----------------------------------------
+
+Number of fastq files for each mate = 1
+ParametersSolo: --soloCellFilterType CellRanger2.2 filtering parameters:  3000 0.99 10
+Finished loading and checking parameters
+--genomeDir directory created: ./GenomeDir/
+May 17 20:36:02 ... starting to generate Genome files
+
+EXITING because of INPUT ERROR: could not open genomeFastaFile: -
+
+May 17 20:36:02 ...... FATAL ERROR, exiting
